@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import os
 from threading import Thread
 
 def run_file(file_path):
@@ -10,6 +11,7 @@ def run_file(file_path):
         print(f"Ошибка при запуске файла {file_path}: {e}")
     except Exception as e:
         print(f"Неожиданная ошибка: {e}")
+
 
 def main():
     # Создаем потоки для каждого файла

@@ -1,4 +1,7 @@
 from telebot import TeleBot
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from bot.config import Config
 from bot.handlers.help import setup_help_handlers
 from bot.database import create_db_connection

@@ -1,12 +1,14 @@
 from decimal import Decimal, InvalidOperation
 import logging
+import sys
 import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Настройка логгера
 logger = logging.getLogger(__name__)
 
 
-def get_exchange_rate(file_path: str = 'current_number.txt') -> Decimal | None:
+def get_exchange_rate(file_path: str = 'bot/current_number.txt') -> Decimal | None:
     """
     Получает текущий курс обмена из файла.
 
