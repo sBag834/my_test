@@ -3,7 +3,7 @@ import time
 import os
 
 # Файл для текущего значения (обновляется каждую секунду)
-CURRENT_NUMBER_FILE = "current_number.txt"
+CURRENT_NUMBER_FILE = "bot/current_number.txt"
 
 
 def read_initial_number():

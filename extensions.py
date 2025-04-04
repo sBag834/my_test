@@ -4,6 +4,7 @@ import mysql.connector
 from mysql.connector import Error
 from decimal import Decimal, InvalidOperation, getcontext
 import os
+from cachetools import TTLCache, cached
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,6 +18,7 @@ DB_CONFIG = {
     'password': os.getenv('DB_PASSWORD')
 }
 getcontext().prec = 10
+admin_cache = TTLCache(maxsize=128, ttl=300)
 
 #инициализировать бота
 bot = telebot.TeleBot(TOKEN)
@@ -26,16 +28,20 @@ bot = telebot.TeleBot(TOKEN)
 def create_db_connection():
     connection = None
     try:
-        connection = mysql.connector.connect(**DB_CONFIG)
-        print("MySQL Database connection successful")
+        connection = mysql.connector.connect(
+            **DB_CONFIG,
+            autocommit=False  # Явное управление транзакциями
+        )
+        print("MySQL connection successful")
+        return connection
     except Error as err:
         print(f"Error: '{err}'")
-    return connection
+        return None
 
 #чтение текущего курса из файла с обработкой ошибок
 def get_exchange_rate():
     try:
-        with open('current_number.txt', 'r', encoding='utf-8') as f:
+        with open('bot/current_number.txt', 'r', encoding='utf-8') as f:
             rate_str = f.read().strip().replace(',', '.')
             return Decimal(rate_str)
     except FileNotFoundError:
@@ -49,7 +55,9 @@ def get_exchange_rate():
         return None
 
 #проверка на админа
-def is_admin(user_id):
+@cached(cache=admin_cache)
+def is_admin(user_id: int) -> bool:
+    """Проверяет, является ли пользователь администратором с TTL-кэшированием"""
     connection = create_db_connection()
     if not connection:
         return False
@@ -98,7 +106,7 @@ def send_welcome(message):
 def help_1(message):
     bot.reply_to(message, "Команда чтобы посмотреть список всех ников пользователей которым можно совершить перевод: /nick\n"
                           "Команда чтобы посмотреть баланс: /balance\n"
-                          "перевод /transfer\n"
+                          "перевод /tr\n"
                           "история /history")
 
 
@@ -177,7 +185,7 @@ def show_user_balance(message):
             connection.close()
 
 
-@bot.message_handler(commands=['transfer'])
+@bot.message_handler(commands=['tr'])
 def start_transfer(message):
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
     markup.add('Эс (ES)', 'Ар (AR)')
@@ -292,12 +300,15 @@ def process_transfer_step(message, currency_type):
     connection = None
     cursor = None
     try:
+        # Парсинг ввода
         parts = message.text.strip().split()
         if len(parts) != 2:
             bot.reply_to(message, "❌ Неверный формат. Используйте: <никнейм> <сумма>")
             return
 
         receiver_nickname, amount_str = parts
+
+        # Валидация суммы
         try:
             amount = Decimal(amount_str).quantize(Decimal('0.00'))
             if amount <= Decimal('0'):
@@ -307,6 +318,7 @@ def process_transfer_step(message, currency_type):
             bot.reply_to(message, "❌ Неверная сумма. Введите число (например: 100 или 50.50)")
             return
 
+        # Подключение к БД
         connection = create_db_connection()
         if not connection:
             bot.reply_to(message, "❌ Ошибка подключения к базе")
@@ -314,7 +326,7 @@ def process_transfer_step(message, currency_type):
 
         cursor = connection.cursor(dictionary=True)
 
-        # Проверяем отправителя
+        # Получение данных отправителя
         cursor.execute(
             "SELECT id, nickname, balance, balance_ar FROM users WHERE telegram_id = %s",
             (message.from_user.id,)
@@ -325,17 +337,12 @@ def process_transfer_step(message, currency_type):
             bot.reply_to(message, "❌ Вы не зарегистрированы")
             return
 
-        # Проверяем баланс в зависимости от валюты
+        # Определение валюты
         balance_field = 'balance' if currency_type == 'es' else 'balance_ar'
+        currency_symbol = 'Эс' if currency_type == 'es' else 'Ar'
         sender_balance = Decimal(str(sender[balance_field]))
 
-        if sender_balance < amount:
-            currency_name = 'Эс' if currency_type == 'es' else 'Ар'
-            bot.reply_to(message,
-                         f"❌ Недостаточно {currency_name}. Ваш баланс: {sender_balance:.2f} {currency_name.upper()}")
-            return
-
-        # Проверяем получателя
+        # Поиск получателя
         cursor.execute("""
             SELECT id, nickname, telegram_id 
             FROM users 
@@ -347,76 +354,86 @@ def process_transfer_step(message, currency_type):
             bot.reply_to(message, "❌ Получатель не найден или это вы сами")
             return
 
-        # Выполняем перевод
-        try:
-            # Сбрасываем возможные предыдущие транзакции
-            connection.rollback()
+        # Проверка баланса
+        if sender_balance < amount:
+            bot.reply_to(message,
+                         f"❌ Недостаточно {currency_symbol}. Ваш баланс: {sender_balance:.2f} {currency_symbol}")
+            return
 
-            # Явно начинаем новую транзакцию
+        try:
+            # Явное начало транзакции
             cursor.execute("START TRANSACTION")
 
-            # Обновление баланса отправителя
+            # Списание средств
             cursor.execute(f"""
-                    UPDATE users 
-                    SET {balance_field} = {balance_field} - %s 
-                    WHERE id = %s
-                """, (float(amount), sender['id']))
+                UPDATE users 
+                SET {balance_field} = {balance_field} - %s 
+                WHERE id = %s
+            """, (float(amount), sender['id']))
 
-            # Обновление баланса получателя
+            if cursor.rowcount != 1:
+                raise Exception("Ошибка списания средств")
+
+            # Зачисление средств
             receiver_field = 'balance' if currency_type == 'es' else 'balance_ar'
             cursor.execute(f"""
-                    UPDATE users 
-                    SET {receiver_field} = {receiver_field} + %s 
-                    WHERE id = %s
-                """, (float(amount), receiver['id']))
+                UPDATE users 
+                SET {receiver_field} = {receiver_field} + %s 
+                WHERE id = %s
+            """, (float(amount), receiver['id']))
+
+            if cursor.rowcount != 1:
+                raise Exception("Ошибка зачисления средств")
 
             # Запись в историю
             cursor.execute("""
-                    INSERT INTO transactions 
-                    (sender_id, receiver_id, amount, currency)
-                    VALUES (%s, %s, %s, %s)
-                """, (sender['id'], receiver['id'], float(amount), currency_type))
+                INSERT INTO transactions 
+                (sender_id, receiver_id, amount, currency)
+                VALUES (%s, %s, %s, %s)
+            """, (sender['id'], receiver['id'], float(amount), currency_type))
 
+            # Фиксация изменений
             connection.commit()
 
-            # Формирование сообщения
-            currency_symbol = 'Эс' if currency_type == 'es' else 'Ar'
+            # Формирование ответа
             new_balance = sender_balance - amount
             response = (
                 f"✅ Перевод {amount:.2f} {currency_symbol} выполнен!\n"
                 f"• Получатель: {receiver['nickname']}\n"
                 f"• Новый баланс: {new_balance:.2f} {currency_symbol}"
             )
-
             bot.reply_to(message, response)
 
-            # Уведомление получателя
+            # Уведомление получателю
             if receiver.get('telegram_id'):
                 try:
                     bot.send_message(
-                        chat_id=receiver['telegram_id'],
-                        text=(
-                            f"💸 Вам поступил перевод!\n"
-                            f"• От: {sender['nickname']}\n"
-                            f"• Сумма: {amount:.2f} {currency_symbol}\n"
-                            f"• Используйте /balance для проверки"
-                        )
+                        receiver['telegram_id'],
+                        f"💸 Вам поступил перевод!\n"
+                        f"• От: {sender['nickname']}\n"
+                        f"• Сумма: {amount:.2f} {currency_symbol}\n"
+                        f"• Проверьте баланс: /balance"
                     )
                 except Exception as e:
                     print(f"Ошибка уведомления: {e}")
 
-        except Exception as e:
+        except Exception as transact_err:
+            # Откат при ошибке
             connection.rollback()
-            bot.reply_to(message, "❌ Ошибка при переводе средств")
-            print(f"Ошибка транзакции: {e}")
+            bot.reply_to(message, "❌ Ошибка при выполнении перевода")
+            print(f"Transaction error: {transact_err}")
 
     except Exception as e:
-        bot.reply_to(message, "❌ Произошла ошибка")
-        print(f"Ошибка в процессе перевода: {e}")
+        bot.reply_to(message, "❌ Произошла непредвиденная ошибка")
+        print(f"Process transfer error: {e}")
+
     finally:
-        if cursor:
-            cursor.close()
+        # Гарантированная очистка
         if connection:
+            if connection.in_transaction:
+                connection.rollback()
+            if cursor:
+                cursor.close()
             connection.close()
 
 
@@ -460,30 +477,37 @@ def notify_admin(user_id, nickname):
     connection = create_db_connection()
     if connection:
         cursor = connection.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT telegram_id FROM users WHERE is_admin = TRUE")
+            admins = cursor.fetchall()
 
-        cursor.execute("SELECT telegram_id FROM users WHERE is_admin = TRUE")
-        admins = cursor.fetchall()
+            for admin in admins:
+                try:
+                    markup = types.InlineKeyboardMarkup()
+                    approve_btn = types.InlineKeyboardButton(
+                        "Approve",
+                        callback_data=f"approve_{user_id}"
+                    )
+                    reject_btn = types.InlineKeyboardButton(
+                        "Reject",
+                        callback_data=f"reject_{user_id}"
+                    )
+                    markup.add(approve_btn, reject_btn)
 
-        for admin in admins:
-            markup = types.InlineKeyboardMarkup()
-            approve_btn = types.InlineKeyboardButton(
-                "Approve",
-                callback_data=f"approve_{user_id}"
-            )
-            reject_btn = types.InlineKeyboardButton(
-                "Reject",
-                callback_data=f"reject_{user_id}"
-            )
-            markup.add(approve_btn, reject_btn)
+                    bot.send_message(
+                        admin['telegram_id'],
+                        f"Запрос на новую регистрацию:\n\nUser ID: {user_id}\nNickname: {nickname}\n\nОдобрить этого пользователя?",
+                        reply_markup=markup
+                    )
+                except Exception as e:
+                    print(f"Ошибка отправки уведомления админу {admin.get('telegram_id')}: {str(e)}")
+                    continue
 
-            bot.send_message(
-                admin['telegram_id'],
-                f"Запрос на новую регистрацию:\n\nUser ID: {user_id}\nNickname: {nickname}\n\nОдобрить этого пользователя?",
-                reply_markup=markup
-            )
-
-        cursor.close()
-        connection.close()
+        except Error as e:
+            print(f"Ошибка при получении списка админов: {str(e)}")
+        finally:
+            cursor.close()
+            connection.close()
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -601,7 +625,6 @@ def handle_admin_balance(message):
     finally:
         if connection:
             connection.close()
-
 
 
 print("Bot is running...")
