@@ -1,9 +1,12 @@
 import discord
 from discord.ext import commands
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Настройки бота
-TOKEN = 'MTM1NDI2NjQ4NjAyNTQ4NjM0Ng.Grf94D.op3BDJqHsO3zY7G9_T9l4-JfcYZFaUicoqMiaw'  # Замените на токен вашего бота
+TOKEN = os.getenv('DS_BOT_TOKEN')  # Замените на токен вашего бота
 FILE_PATH = 'bot/current_number.txt'  # Путь к файлу с числом
 COMMAND_PREFIX = '!'  # Префикс команд
 COMMAND_NAME = 'cr'  # Название команды

@@ -12,7 +12,8 @@ from bot.handlers import (
     balance,
     transfer,
     history,
-    admin
+    admin,
+    dep_kazino
 )
 
 
@@ -28,6 +29,7 @@ def main():
     admin.setup_admin_handlers(bot)
     setup_help_handlers(bot)
     setup_callbacks_handlers(bot)
+    dep_kazino.setup_casino_handlers(bot)
 
     print("Bot is running...")
     bot.infinity_polling()
