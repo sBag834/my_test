@@ -5,12 +5,34 @@ from bot.utils.decorators import log_errors
 import logging
 from decimal import Decimal, InvalidOperation
 import random
+from bot.utils.decorators import admin_required
 
 
 logger = logging.getLogger(__name__)
 
+digits = "0123456789"
+
+
+
+def set_4_code():
+    dep = ''.join(random.choice(digits) for _ in range(4))
+    dep21 = 'dep' + dep
+    return dep21
+dep22=set_4_code()
+
+def setup_4_code(bot):
+    @bot.message_handler(commands=['pop'])
+    @admin_required("⛔ Требуются права администратора!")
+    def handle_admin(message):
+        bot.reply_to(
+            message,
+            f"код {dep22}"
+        )
+
+
+
 def setup_casino_handlers(bot):
-    @bot.message_handler(commands=['dep'])
+    @bot.message_handler(commands=dep22)
     @log_errors("transfer_command")
     def handle_transfer(message):
         """

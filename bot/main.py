@@ -30,6 +30,7 @@ def main():
     setup_help_handlers(bot)
     setup_callbacks_handlers(bot)
     dep_kazino.setup_casino_handlers(bot)
+    dep_kazino.setup_4_code(bot)
 
     print("Bot is running...")
     bot.infinity_polling()
