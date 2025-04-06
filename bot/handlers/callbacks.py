@@ -40,6 +40,11 @@ def setup_callbacks_handlers(bot):
                     )
                     message_text = "❌ Заявка отклонена"
 
+                    try:
+                        bot.send_message(user_id, "Ваша заявка была отклонена.")
+                    except Exception as e:
+                        logger.error(f"Ошибка уведомления пользователя: {str(e)}")
+
                 connection.commit()
 
                 # Обновляем сообщение у админа

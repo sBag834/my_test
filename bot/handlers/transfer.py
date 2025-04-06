@@ -28,7 +28,8 @@ def setup_transfer_handlers(bot):
                     "❌ *Неверный формат!*\n"
                     "Используйте: /tr <валюта> <ник> <сумма>\n"
                     "Пример: /tr es Игрок123 100.50\n"
-                    "Валюты: es (Эссенция), ar (Ары)",
+                    "Валюты: es (Эссенция), ar (Ары)\n"
+                    "❗️❗️❗️ Комиссия составляет 5% ❗️❗️❗️",
                     parse_mode="Markdown"
                 )
                 return
@@ -43,7 +44,8 @@ def setup_transfer_handlers(bot):
                     "❌ *Недопустимая валюта!*\n"
                     "Доступные варианты:\n"
                     "- `es` для Эссенции\n"
-                    "- `ar` для Аров",
+                    "- `ar` для Аров\n"
+                    "❗️❗️❗️ Комиссия составляет 5% ❗️❗️❗️",
                     parse_mode="Markdown"
                 )
                 return
@@ -60,7 +62,8 @@ def setup_transfer_handlers(bot):
                     "Примеры правильного ввода:\n"
                     "- `100`\n"
                     "- `50.5`\n"
-                    "- `75.00`",
+                    "- `75.00`\n"
+                    "❗️❗️❗️ Комиссия составляет 5% ❗️❗️❗️",
                     parse_mode="Markdown"
                 )
                 return
@@ -113,16 +116,25 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
             bot.send_message(sender_id, f"❌ Пользователь @{receiver_nick} не найден")
             return
 
+        #проверка кто скидывает деньги, если связанно с банком то нит коммисии
+        if receiver['telegram_id'] != '0000000000':
+            tax = amount * Decimal('0.05')
+            amount_tax = amount + tax
+        else:
+            tax = Decimal('0')
+            amount_tax = amount + tax
+
         # Проверка баланса
         balance_field = 'balance' if currency == 'es' else 'balance_ar'
         sender_balance = sender.get(balance_field, Decimal('0'))
         currency_name = 'Эссенции' if currency == 'es' else 'Аров'
 
-        if sender_balance < amount:
+        if sender_balance < amount_tax:
             bot.send_message(
                 sender_id,
                 f"❌ Недостаточно {currency_name}!\n"
-                f"Ваш баланс: {sender_balance:.2f}"
+                f"Ваш баланс: {sender_balance:.2f}\n"
+                "❗️❗️❗️ Комиссия составляет 5% ❗️❗️❗️"
             )
             return
 
@@ -133,7 +145,14 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
             # Списание средств
             cursor.execute(
                 f"UPDATE users SET {balance_field} = {balance_field} - %s WHERE id = %s",
-                (float(amount), sender['id'])
+                (float(amount_tax), sender['id'])
+            )
+
+            # Начисление комиссии банку
+            bank_field = 'balance' if currency == 'es' else 'balance_ar'
+            cursor.execute(
+                f"UPDATE users SET {bank_field} = {bank_field} + %s WHERE id = %s",
+                (float(tax), '3')
             )
 
             # Зачисление средств
@@ -156,11 +175,12 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
             safe_receiver_nick = escape(receiver['nickname'])
 
             # Уведомление отправителю
-            new_balance = sender_balance - amount
+            new_balance = sender_balance - amount_tax
             bot.send_message(
                 sender_id,
                 f"✅ Перевод выполнен!\n\n"
                 f"Сумма: {amount:.2f} {currency_name}\n"
+                f"Комиссия составила: {tax:.2f}\n"
                 f"Получатель: {safe_receiver_nick}\n"
                 f"Новый баланс: {new_balance:.2f}"
             )
