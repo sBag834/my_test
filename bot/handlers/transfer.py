@@ -117,11 +117,14 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
             return
 
         #проверка кто скидывает деньги, если связанно с банком то нит коммисии
-        if receiver['telegram_id'] != '0000000000':
-            tax = amount * Decimal('0.05')
+        if receiver['telegram_id'] == '0000000000':
+            tax = Decimal('0.0')
+            amount_tax = amount + tax
+        elif currency == 'es':
+            tax = Decimal('0.0')
             amount_tax = amount + tax
         else:
-            tax = Decimal('0')
+            tax = amount * Decimal('0.05')
             amount_tax = amount + tax
 
         # Проверка баланса
@@ -129,7 +132,7 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
         sender_balance = sender.get(balance_field, Decimal('0'))
         currency_name = 'Эссенции' if currency == 'es' else 'Аров'
 
-        if sender_balance < amount_tax:
+        if sender_balance < amount_tax and currency == 'ar':
             bot.send_message(
                 sender_id,
                 f"❌ Недостаточно {currency_name}!\n"
@@ -137,6 +140,14 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
                 "❗️❗️❗️ Комиссия составляет 5% ❗️❗️❗️"
             )
             return
+        elif sender_balance < amount_tax and currency == 'es':
+            bot.send_message(
+                sender_id,
+                f"❌ Недостаточно {currency_name}!\n"
+                f"Ваш баланс: {sender_balance:.2f}"
+            )
+            return
+
 
         # Выполнение транзакции
         try:

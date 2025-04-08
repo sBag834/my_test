@@ -13,7 +13,8 @@ from bot.handlers import (
     transfer,
     history,
     admin,
-    dep_kazino
+    dep_kazino,
+    crypto_val
 )
 
 
@@ -32,6 +33,9 @@ def main():
     dep_kazino.setup_casino_handlers(bot)
     dep_kazino.setup_4_code(bot)
     admin.transfer_bank(bot)
+    crypto_val.handle_price(bot)
+    crypto_val.handle_buy(bot)
+    crypto_val.handle_sell(bot)
 
     print("Bot is running...")
     bot.infinity_polling()

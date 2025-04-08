@@ -2,6 +2,7 @@ from telebot import types
 from decimal import Decimal
 from bot.database import create_db_connection
 from bot.utils.exchange import get_exchange_rate
+from bot.handlers.crypto_val import get_current_price
 
 
 def setup_balance_handlers(bot):
@@ -25,17 +26,29 @@ def setup_balance_handlers(bot):
 
             user_data = cursor.fetchone()
 
+            cursor.execute("SELECT balance FROM users WHERE id = 3")
+            bought_before = 1000 - cursor.fetchone()['balance'] or 0  # Сколько было куплено до продажи
+
             if user_data:
                 # Получаем балансы с защитой от None
                 balance_es = user_data['balance'] or Decimal('0')
                 balance_ar = user_data['balance_ar'] or Decimal('0')
 
                 # Конвертация валюты
-                rate = get_exchange_rate()
+
+                total_refund = 0
+                remaining_amount = balance_es
+                while remaining_amount > 0:
+                    current_chunk = min(1, remaining_amount)
+                    current_price = Decimal('1') + Decimal('0.1') * (bought_before - 1)  # Цена предыдущей единицы
+                    total_refund += current_price * current_chunk
+                    bought_before -= current_chunk
+                    remaining_amount -= current_chunk
+
+                rate = get_current_price()
                 conversion_text = ""
                 if rate and rate > 0:
-                    converted_ar = balance_es * rate
-                    conversion_text = f"\n  ≈ {converted_ar:.2f} Ar (курс {rate:.2f} Ar/Эс)"
+                    conversion_text = f"\n  ≈ {total_refund:.2f} Ar (курс {rate:.2f} Ar/Эс)"
 
                 response = (
                     f"👤 Ник: {user_data['nickname']}\n"
