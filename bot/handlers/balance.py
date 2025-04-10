@@ -40,7 +40,7 @@ def setup_balance_handlers(bot):
                 remaining_amount = balance_es
                 while remaining_amount > 0:
                     current_chunk = min(1, remaining_amount)
-                    current_price = Decimal('1') + Decimal('0.1') * (bought_before - 1)  # Цена предыдущей единицы
+                    current_price = Decimal('1') + Decimal('0.08') * (bought_before - 1)  # Цена предыдущей единицы
                     total_refund += current_price * current_chunk
                     bought_before -= current_chunk
                     remaining_amount -= current_chunk

@@ -16,17 +16,14 @@ def run_file(file_path):
 def main():
     # Создаем потоки для каждого файла
     bot_thread = Thread(target=run_file, args=("bot.py",))
-    internal_logic_thread = Thread(target=run_file, args=("internal_logic.py",))
     tg_bot = Thread(target=run_file, args=("bot/main.py",))
 
     # Запускаем потоки
     bot_thread.start()
-    internal_logic_thread.start()
     tg_bot.start()
 
     # Ждем завершения потоков
     bot_thread.join()
-    internal_logic_thread.join()
     tg_bot.join()
 
 if __name__ == "__main__":

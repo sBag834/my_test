@@ -23,7 +23,7 @@ def get_current_price():
     bought = 1000 - balance_es
     cursor.close()
     connection.close()
-    return Decimal('1') + Decimal('0.1') * bought
+    return Decimal('1') + Decimal('0.08') * bought
 
 
 def buy_crypto(user_id, amount):
@@ -55,7 +55,7 @@ def buy_crypto(user_id, amount):
     # Цена растёт на 0.1 за каждую полную единицу
     while remaining_amount > 0:
         current_chunk = min(1, remaining_amount)  # Берём 1 или остаток
-        current_price = Decimal('1') + Decimal('0.1') * bought_before
+        current_price = Decimal('1') + Decimal('0.08') * bought_before
         total_cost += current_price * current_chunk
         bought_before += current_chunk
         remaining_amount -= current_chunk
@@ -109,7 +109,7 @@ def sell_crypto(user_id, amount):
     # Цена уменьшается на 0.1 за каждую проданную единицу
     while remaining_amount > 0:
         current_chunk = min(1, remaining_amount)
-        current_price = Decimal('1') + Decimal('0.1') * (bought_before - 1)  # Цена предыдущей единицы
+        current_price = Decimal('1') + Decimal('0.08') * (bought_before - 1)  # Цена предыдущей единицы
         total_refund += current_price * current_chunk
         bought_before -= current_chunk
         remaining_amount -= current_chunk

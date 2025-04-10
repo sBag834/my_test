@@ -2,12 +2,12 @@ import discord
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
+from bot.handlers.crypto_val import get_current_price
 
 load_dotenv()
 
 # Настройки бота
 TOKEN = os.getenv('DS_BOT_TOKEN')  # Замените на токен вашего бота
-FILE_PATH = 'bot/current_number.txt'  # Путь к файлу с числом
 COMMAND_PREFIX = '!'  # Префикс команд
 COMMAND_NAME = 'cr'  # Название команды
 
@@ -25,10 +25,9 @@ async def on_ready():
 @bot.command(name=COMMAND_NAME)
 async def send_number(ctx):
     try:
-        # Читаем число из файла
-        with open(FILE_PATH, 'r') as file:
-            number = file.read().strip()
-        await ctx.send(f"Текущий курс Эссенции: {number}АР к 1 Эссенции")
+
+        number = get_current_price()
+        await ctx.send(f"Текущий курс Эссенции: {number:.2f}АР к 1 Эссенции")
 
     except Exception as e:
         await ctx.send(f"Произошла ошибка")
