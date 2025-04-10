@@ -3,6 +3,7 @@ from unicodedata import decimal
 
 from bot.database import create_db_connection
 from decimal import Decimal
+from bot.utils.decorators import admin_required
 
 def get_current_price():
     connection = None
@@ -130,6 +131,7 @@ def sell_crypto(user_id, amount):
 
 def handle_buy(bot):
     @bot.message_handler(commands=['buy'])
+    @admin_required("⛔ Требуются права администратора!")
     def handle_buy1(message):
         try:
             amount_str = message.text.split()[1]
@@ -143,6 +145,7 @@ def handle_buy(bot):
 
 def handle_sell(bot):
     @bot.message_handler(commands=['sell'])
+    @admin_required("⛔ Требуются права администратора!")
     def handle_sell1(message):
         try:
             amount_str = message.text.split()[1]

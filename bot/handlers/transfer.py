@@ -137,7 +137,7 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
                 sender_id,
                 f"❌ Недостаточно {currency_name}!\n"
                 f"Ваш баланс: {sender_balance:.2f}\n"
-                "❗️❗️❗️ Комиссия составляет 5% ❗️❗️❗️"
+                "❗️❗️Комиссия составляет 5% ❗️❗️"
             )
             return
         elif sender_balance < amount_tax and currency == 'es':

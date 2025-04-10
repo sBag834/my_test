@@ -126,7 +126,7 @@ def cash_out_bank_handlers(amount):
 
 
 def cash_in_bank(bot):
-    @bot.message_handler(commands=['in_cash'])
+    @bot.message_handler(commands=['incash'])
     @admin_required("⛔ Требуются права администратора!")
     def cash_in_bank1(message):
         try:
@@ -139,7 +139,7 @@ def cash_in_bank(bot):
             bot.reply_to(message, "Используйте: /in_cash [количество Ар]")
 
 def cash_out_bank(bot):
-    @bot.message_handler(commands=['out_cash'])
+    @bot.message_handler(commands=['outcash'])
     @admin_required("⛔ Требуются права администратора!")
     def cash_out_bank1(message):
         try:
