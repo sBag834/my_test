@@ -80,6 +80,78 @@ def setup_admin_handlers(bot):
 
 
 
+def cash_in_bank_handlers(amount):
+
+    if amount <= 0:
+        return "Количество должно быть больше нуля!"
+
+    connection = None
+    cursor = None
+
+    connection = create_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    cursor.execute(
+        "UPDATE users SET balance_ar = balance_ar + %s WHERE id = 3",
+        (amount,))
+
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+    return f"Казна банка пополнена на {amount:.2f} Ар при помощи налички."
+
+
+def cash_out_bank_handlers(amount):
+
+    if amount <= 0:
+        return "Количество должно быть больше нуля!"
+
+    connection = None
+    cursor = None
+
+    connection = create_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    cursor.execute(
+        "UPDATE users SET balance_ar = balance_ar - %s WHERE id = 3",
+        (amount,))
+
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+    return f"Со счёта банка было снято {amount:.2f} Ар и выведенно в наличку."
+
+
+
+def cash_in_bank(bot):
+    @bot.message_handler(commands=['in_cash'])
+    @admin_required("⛔ Требуются права администратора!")
+    def cash_in_bank1(message):
+        try:
+            amount_str = message.text.split()[1]
+            amount = Decimal(amount_str).quantize(Decimal('0.00'))
+            response = cash_in_bank_handlers(amount)
+            bot.reply_to(message, response)
+
+        except:
+            bot.reply_to(message, "Используйте: /in_cash [количество Ар]")
+
+def cash_out_bank(bot):
+    @bot.message_handler(commands=['out_cash'])
+    @admin_required("⛔ Требуются права администратора!")
+    def cash_out_bank1(message):
+        try:
+            amount_str = message.text.split()[1]
+            amount = Decimal(amount_str).quantize(Decimal('0.00'))
+            response = cash_out_bank_handlers(amount)
+            bot.reply_to(message, response)
+
+        except:
+            bot.reply_to(message, "Используйте: /out_cash [количество Ар]")
+
+
 def transfer_bank(bot):
     @bot.message_handler(commands=['pay'])
     @admin_required("⛔ Требуются права администратора!")

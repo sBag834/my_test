@@ -42,7 +42,7 @@ def buy_crypto(user_id, amount):
     bank_crypto = cursor.fetchone()['balance']
 
     if bank_crypto < amount:
-        return f"В банке недостаточно криптовалюты! Доступно: {bank_crypto:.2f}"
+        return f"В банке недостаточно Эссенции! Доступно для покупки: {bank_crypto:.2f}"
 
     # Рассчитываем общую стоимость
     cursor.execute("SELECT balance FROM users WHERE id = 3")
@@ -65,7 +65,7 @@ def buy_crypto(user_id, amount):
     user_money = cursor.fetchone()['balance_ar']
 
     if user_money < total_cost:
-        return f"Недостаточно денег! Нужно: {total_cost:.2f}"
+        return f"Недостаточно Ар! Нужно: {total_cost:.2f}"
 
     # Обновляем балансы
     cursor.execute(
@@ -78,7 +78,7 @@ def buy_crypto(user_id, amount):
     cursor.close()
     connection.close()
 
-    return f"Куплено {amount:.2f} криптовалюты за {total_cost:.2f} (средняя цена: {total_cost / amount:.2f})"
+    return f"Куплено {amount:.2f} Эссенции за {total_cost:.2f} Ар (средняя цена: {total_cost / amount:.2f})"
 
 
 def sell_crypto(user_id, amount):
@@ -97,7 +97,7 @@ def sell_crypto(user_id, amount):
     user_crypto = cursor.fetchone()['balance']
 
     if user_crypto < amount:
-        return f"Недостаточно криптовалюты! У вас: {user_crypto:.2f}"
+        return f"У вас недостаточно Эссенции! Баланс Эссенции: {user_crypto:.2f}"
 
     # Рассчитываем сумму возврата
     cursor.execute("SELECT balance FROM users WHERE id = 3")
@@ -125,7 +125,7 @@ def sell_crypto(user_id, amount):
     cursor.close()
     connection.close()
 
-    return f"Продано {amount:.2f} криптовалюты за {total_refund:.2f} (средняя цена: {total_refund / amount:.2f})"
+    return f"Продано {amount:.2f} Эссенции за {total_refund:.2f} (средняя цена: {total_refund / amount:.2f})"
 
 
 def handle_buy(bot):
@@ -138,8 +138,7 @@ def handle_buy(bot):
             bot.reply_to(message, response)
 
         except:
-            bot.reply_to(message, "Используйте: /buy [количество]")
-
+            bot.reply_to(message, "Используйте: /buy [количество Эссенции]")
 
 
 def handle_sell(bot):
@@ -152,11 +151,11 @@ def handle_sell(bot):
             bot.reply_to(message, response)
 
         except:
-            bot.reply_to(message, "Используйте: /buy [количество]")
+            bot.reply_to(message, "Используйте: /sell [количество Эссенции]")
 
 
 def handle_price(bot):
     @bot.message_handler(commands=['price'])
     def handle_price2(message):
         price = get_current_price()
-        bot.reply_to(message, f"Текущая цена: {price:.2f}")
+        bot.reply_to(message, f"Текущая цена Эссенции: {price:.2f} Ар")

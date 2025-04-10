@@ -36,6 +36,8 @@ def main():
     crypto_val.handle_price(bot)
     crypto_val.handle_buy(bot)
     crypto_val.handle_sell(bot)
+    admin.cash_in_bank(bot)
+    admin.cash_out_bank(bot)
 
     print("Bot is running...")
     bot.infinity_polling()

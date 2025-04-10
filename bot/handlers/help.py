@@ -34,6 +34,8 @@ def setup_help_handlers(bot):
             "• /pay <валюта> <ник> <сумма> - Перевод средств из банка\n"
             "   Пример: /pay es Игрок123 100.50\n"
             "   Валюта: es (Эссенция), ar (Ары)\n"
+            "• /in_cash - пополнить счёт банка при помощи налички\n"
+            "• /out_cash - снять наличку со счёта банка\n"
         ) if is_admin_cached(user_id) else ""
 
         return base_help + admin_help
