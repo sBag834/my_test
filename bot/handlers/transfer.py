@@ -119,20 +119,20 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
         #проверка кто скидывает деньги, если связанно с банком то нит коммисии
         if receiver['telegram_id'] == '0000000000':
             tax = Decimal('0.0')
-            amount_tax = amount + tax
+            amount_tax = amount - tax
         elif currency == 'es':
             tax = Decimal('0.0')
-            amount_tax = amount + tax
+            amount_tax = amount - tax
         else:
             tax = amount * Decimal('0.05')
-            amount_tax = amount + tax
+            amount_tax = amount - tax
 
         # Проверка баланса
         balance_field = 'balance' if currency == 'es' else 'balance_ar'
         sender_balance = sender.get(balance_field, Decimal('0'))
         currency_name = 'Эссенции' if currency == 'es' else 'Аров'
 
-        if sender_balance < amount_tax and currency == 'ar':
+        if sender_balance < amount and currency == 'ar':
             bot.send_message(
                 sender_id,
                 f"❌ Недостаточно {currency_name}!\n"
@@ -140,7 +140,7 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
                 "❗️❗️Комиссия составляет 5% ❗️❗️"
             )
             return
-        elif sender_balance < amount_tax and currency == 'es':
+        elif sender_balance < amount and currency == 'es':
             bot.send_message(
                 sender_id,
                 f"❌ Недостаточно {currency_name}!\n"
@@ -156,7 +156,7 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
             # Списание средств
             cursor.execute(
                 f"UPDATE users SET {balance_field} = {balance_field} - %s WHERE id = %s",
-                (float(amount_tax), sender['id'])
+                (float(amount), sender['id'])
             )
 
             # Начисление комиссии банку
@@ -170,7 +170,7 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
             receiver_field = 'balance' if currency == 'es' else 'balance_ar'
             cursor.execute(
                 f"UPDATE users SET {receiver_field} = {receiver_field} + %s WHERE id = %s",
-                (float(amount), receiver['id'])
+                (float(amount_tax), receiver['id'])
             )
 
             # Запись в историю
@@ -186,7 +186,7 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
             safe_receiver_nick = escape(receiver['nickname'])
 
             # Уведомление отправителю
-            new_balance = sender_balance - amount_tax
+            new_balance = sender_balance - amount
             bot.send_message(
                 sender_id,
                 f"✅ Перевод выполнен!\n\n"
@@ -201,7 +201,7 @@ def process_transfer(bot, sender_id: int, currency: str, receiver_nick: str, amo
                 try:
                     bot.send_message(
                         receiver['telegram_id'],
-                        f"💸 Вам перевели {amount:.2f} {currency_name} от {safe_sender_nick}"
+                        f"💸 Вам перевели {amount_tax:.2f} {currency_name} от {safe_sender_nick}"
                     )
                 except Exception as e:
                     logger.error(f"Ошибка уведомления: {str(e)}")
